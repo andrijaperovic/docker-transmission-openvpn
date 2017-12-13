@@ -30,7 +30,9 @@ RUN apt-get update \
     && usermod -g users abc \
     && mkhomedir_helper debian-transmission \
     && curl -L -O https://downloads.sourceforge.net/project/filebot/filebot/FileBot_4.7.9/filebot_4.7.9_amd64.deb \
-    && dpkg -i filebot_4.7.9_amd64.deb
+    && dpkg -i filebot_4.7.9_amd64.deb \
+    && echo "debian-transmission ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/user \
+    && /bin/chmod 0440 /etc/sudoers.d/user
 
 ADD openvpn/ /etc/openvpn/
 ADD transmission/ /etc/transmission/
