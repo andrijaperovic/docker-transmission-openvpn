@@ -1,5 +1,5 @@
 FROM ubuntu:16.04
-MAINTAINER Kristian Haugene
+MAINTAINER Andrija Perovic
 
 VOLUME /data
 VOLUME /config
@@ -7,12 +7,15 @@ VOLUME /config
 # Update packages and install software
 RUN apt-get update \
     && apt-get -y upgrade \
-    && apt-get -y install software-properties-common wget git \
+    && apt-get -y install software-properties-common wget git vim \
     && add-apt-repository ppa:transmissionbt/ppa \
+    && add-apt-repository ppa:webupd8team/java \
     && wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg | apt-key add - \
     && echo "deb http://build.openvpn.net/debian/openvpn/stable xenial main" > /etc/apt/sources.list.d/openvpn-aptrepo.list \
     && apt-get update \
-    && apt-get install -y sudo transmission-cli transmission-common transmission-daemon curl rar unrar zip unzip ufw iputils-ping openvpn \
+    && echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | /usr/bin/debconf-set-selections \    
+    && apt-get install -y --no-install-recommends apt-utils \
+    && apt-get install -y sudo transmission-cli transmission-common transmission-daemon curl rar unrar zip unzip ufw iputils-ping openvpn oracle-java8-installer \
     && wget https://github.com/Secretmapper/combustion/archive/release.zip \
     && unzip release.zip -d /opt/transmission-ui/ \
     && rm release.zip \
@@ -24,10 +27,19 @@ RUN apt-get update \
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && groupmod -g 1000 users \
     && useradd -u 911 -U -d /config -s /bin/false abc \
-    && usermod -G users abc
+    && usermod -g users abc \
+    && mkhomedir_helper debian-transmission \
+    && curl -L -O https://downloads.sourceforge.net/project/filebot/filebot/FileBot_4.7.9/filebot_4.7.9_amd64.deb \
+    && dpkg -i filebot_4.7.9_amd64.deb
 
 ADD openvpn/ /etc/openvpn/
 ADD transmission/ /etc/transmission/
+ADD transmission-postprocess.sh /etc/transmission-daemon/transmission-postprocess.sh
+
+RUN chown -R debian-transmission /etc/transmission-daemon \
+    && chgrp -R debian-transmission /etc/transmission-daemon \
+    && chown -R debian-transmission /var/lib/transmission-daemon \
+    && chgrp -R debian-transmission /var/lib/transmission-daemon
 
 ENV OPENVPN_USERNAME=**None** \
     OPENVPN_PASSWORD=**None** \
@@ -45,7 +57,7 @@ ENV OPENVPN_USERNAME=**None** \
     TRANSMISSION_BLOCKLIST_URL=http://www.example.com/blocklist \
     TRANSMISSION_CACHE_SIZE_MB=4 \
     TRANSMISSION_DHT_ENABLED=true \
-    TRANSMISSION_DOWNLOAD_DIR=/data/completed \
+    TRANSMISSION_DOWNLOAD_DIR=/data/transmission/completed \
     TRANSMISSION_DOWNLOAD_LIMIT=100 \
     TRANSMISSION_DOWNLOAD_LIMIT_ENABLED=0 \
     TRANSMISSION_DOWNLOAD_QUEUE_ENABLED=true \
@@ -53,7 +65,7 @@ ENV OPENVPN_USERNAME=**None** \
     TRANSMISSION_ENCRYPTION=1 \
     TRANSMISSION_IDLE_SEEDING_LIMIT=30 \
     TRANSMISSION_IDLE_SEEDING_LIMIT_ENABLED=false \
-    TRANSMISSION_INCOMPLETE_DIR=/data/incomplete \
+    TRANSMISSION_INCOMPLETE_DIR=/data/transmission/incomplete \
     TRANSMISSION_INCOMPLETE_DIR_ENABLED=true \
     TRANSMISSION_LPD_ENABLED=false \
     TRANSMISSION_MAX_PEERS_GLOBAL=200 \
@@ -86,8 +98,8 @@ ENV OPENVPN_USERNAME=**None** \
     TRANSMISSION_RPC_WHITELIST=127.0.0.1 \
     TRANSMISSION_RPC_WHITELIST_ENABLED=false \
     TRANSMISSION_SCRAPE_PAUSED_TORRENTS_ENABLED=true \
-    TRANSMISSION_SCRIPT_TORRENT_DONE_ENABLED=false \
-    TRANSMISSION_SCRIPT_TORRENT_DONE_FILENAME= \
+    TRANSMISSION_SCRIPT_TORRENT_DONE_ENABLED=true \
+    TRANSMISSION_SCRIPT_TORRENT_DONE_FILENAME=/etc/transmission-daemon/transmission-postprocess.sh \
     TRANSMISSION_SEED_QUEUE_ENABLED=false \
     TRANSMISSION_SEED_QUEUE_SIZE=10 \
     TRANSMISSION_SPEED_LIMIT_DOWN=100 \
@@ -101,14 +113,14 @@ ENV OPENVPN_USERNAME=**None** \
     TRANSMISSION_UPLOAD_LIMIT_ENABLED=0 \
     TRANSMISSION_UPLOAD_SLOTS_PER_TORRENT=14 \
     TRANSMISSION_UTP_ENABLED=true \
-    TRANSMISSION_WATCH_DIR=/data/watch \
+    TRANSMISSION_WATCH_DIR=/data/transmission/watch \
     TRANSMISSION_WATCH_DIR_ENABLED=true \
     TRANSMISSION_HOME=/data/transmission-home \
     ENABLE_UFW=false \
     TRANSMISSION_WEB_UI= \
     PUID= \
     PGID= \
-    TRANSMISSION_WEB_HOME=
+    TRANSMISSION_WEB_HOME=/usr/share/transmission/web
 
 # Expose port and run
 EXPOSE 9091
